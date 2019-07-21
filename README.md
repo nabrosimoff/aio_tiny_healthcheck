@@ -1,4 +1,8 @@
 # aio_tiny_healthcheck
+[![PyPI](https://img.shields.io/pypi/v/aio_tiny_healthcheck.svg)](https://github.com/nabrosimoff/aio_tiny_healthcheck)
+[![Build Status](https://travis-ci.org/nabrosimoff/aio_tiny_healthcheck.svg?branch=master)](https://travis-ci.org/nabrosimoff/aio_tiny_healthcheck)
+[![Build Status](https://travis-ci.org/nabrosimoff/aio_tiny_healthcheck.svg?branch=develop)](https://travis-ci.org/nabrosimoff/aio_tiny_healthcheck)
+
 Tiny asynchronous implementation of healthcheck provider and server
 
 # Usage
