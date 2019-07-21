@@ -1,5 +1,5 @@
-from typing import Union, Callable, Dict
-from inspect import isfunction, iscoroutinefunction
+from typing import Union, Callable, Dict, Coroutine, Any
+from inspect import isfunction, iscoroutinefunction, ismethod
 import asyncio
 
 
@@ -24,14 +24,14 @@ class AioTinyHealthcheck:
     def add_check(
             self,
             name: str,
-            check: Callable[..., bool]
+            check: Union[Callable[..., bool], Callable[..., Coroutine[Any,Any,bool]]]
     ):
         if iscoroutinefunction(check) is True:
             if name not in self.checks:
                 self.__async_healthchecks.add((name, check))
             else:
                 raise ValueError('Check name must be unique')
-        elif isfunction(check) is True:
+        elif isfunction(check) is True or ismethod(check):
             if name not in self.checks:
                 self.__sync_healthchecks.add((name, check))
             else:
@@ -39,7 +39,9 @@ class AioTinyHealthcheck:
         else:
             raise (
                 TypeError('Method expects argument "check" '
-                          'of awaitable or callable object type')
+                          'of awaitable or callable object type. '
+                          'Got <%s>' % (type(check))
+                          )
             )
 
     @property

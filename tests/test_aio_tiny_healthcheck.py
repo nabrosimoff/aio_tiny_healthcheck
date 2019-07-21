@@ -6,6 +6,17 @@ import asyncio
 import aiohttp
 
 @pytest.fixture()
+def check_class_object():
+    class t:
+        async def async_method_true(self):
+            return True
+
+        def sync_method_true(self):
+            return True
+
+    return t()
+
+@pytest.fixture()
 def sync_true():
     def f():
         return True
@@ -76,6 +87,24 @@ def test_add_nonuniq_check_async():
         aio_thc.add_check('async', lambda: True)
 
 
+def test_add_sync_method(check_class_object):
+    aio_thc = AioTinyHealthcheck()
+
+    aio_thc.add_check('sync', check_class_object.sync_method_true)
+
+    assert 'sync' in aio_thc.sync_checks
+    assert len(aio_thc.async_checks) == 0
+
+
+def test_add_async_method(check_class_object):
+    aio_thc = AioTinyHealthcheck()
+
+    aio_thc.add_check('async', check_class_object.async_method_true)
+
+    assert 'async' in aio_thc.async_checks
+    assert len(aio_thc.sync_checks) == 0
+
+
 @pytest.mark.asyncio
 async def test_check_handler_empty():
     aio_thc = AioTinyHealthcheck()
@@ -137,7 +166,7 @@ async def test_healthcheck_server(sync_false):
 
     hc_server = HealthcheckServerHttp(aio_thc, host='localhost')
 
-    task = asyncio.create_task(hc_server.run())
+    task = asyncio.ensure_future(hc_server.run())
 
     async with aiohttp.ClientSession() as session:
         async with session.get('http://localhost:8000/healthcheck/') as resp:
