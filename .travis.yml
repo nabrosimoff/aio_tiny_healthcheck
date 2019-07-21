@@ -10,7 +10,7 @@ matrix:
       dist: xenial
       sudo: true
 
-install: pip install tox-travis coveralls
+install: pip install tox-travis coveralls aiohttp pytest-asyncio
 
 script: tox -e $TOX_ENV
 
