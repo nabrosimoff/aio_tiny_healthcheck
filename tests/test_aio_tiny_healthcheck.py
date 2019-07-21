@@ -24,6 +24,13 @@ def sync_true():
 
 
 @pytest.fixture()
+def sync_none():
+    def f():
+        return None
+    return f
+
+
+@pytest.fixture()
 def sync_false():
     def f():
         return False
@@ -113,6 +120,16 @@ async def test_check_handler_empty():
 
     assert result.code == 200
     assert len(result.body) == 0
+
+
+@pytest.mark.asyncio
+async def test_check_handler_none(sync_none):
+    aio_thc = AioTinyHealthcheck()
+
+    aio_thc.add_check('none', sync_none)
+
+    with pytest.raises(TypeError):
+        await aio_thc.check_handler()
 
 
 @pytest.mark.asyncio
