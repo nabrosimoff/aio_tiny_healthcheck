@@ -111,7 +111,7 @@ class AioTinyHealthcheck:
                     f'Required "bool".')
         return True
 
-    async def aiohttp_handler(self):
+    async def aiohttp_handler(self, request):
         from aiohttp import web
         response = await self.check_handler()
 
