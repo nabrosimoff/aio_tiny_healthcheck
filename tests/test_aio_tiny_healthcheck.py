@@ -123,7 +123,7 @@ async def test_check_handler_success_aiohttp(async_true):
 
     aio_thc.add_check('async_true', async_true)
 
-    response = await aio_thc.aiohttp_handler()
+    response = await aio_thc.aiohttp_handler(None)
 
     assert response.status == 201
     assert json.loads(response.body.decode())['async_true'] == True
@@ -146,7 +146,8 @@ async def test_healthcheck_server(sync_false):
             print(resp_body)
             assert json.loads(resp_body)['sync_false'] == False
 
-    await asyncio.sleep(0.1)
-    hc_server.stop()
+
+    hc_server.stop_later()
+    await asyncio.sleep(1)
     task.cancel()
 

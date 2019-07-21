@@ -1,5 +1,6 @@
 from aiohttp import web
 import asyncio
+
 from aio_tiny_healthcheck import AioTinyHealthcheck
 
 
@@ -29,12 +30,14 @@ class HealthcheckServerHttp:
         self._port = port
         self._path = path
         self._running = False
+        self._user_stopped = True
+        self._server = None
 
     async def _handler(self, request):
         path = request.path.rstrip('/')
 
         if path == self._path:
-            response = await self._healthcheck_provider.aiohttp_handler()
+            response = await self._healthcheck_provider.aiohttp_handler(None)
         else:
             response = web.Response(body='404 Not Found', status=404)
 
@@ -48,20 +51,25 @@ class HealthcheckServerHttp:
         """
         if self._running is False:
             self._running = True
+            self._user_stopped = False
 
-            server = web.Server(self._handler)
-            runner = web.ServerRunner(server)
+            self._server = web.Server(self._handler)
+            runner = web.ServerRunner(self._server)
             await runner.setup()
             site = web.TCPSite(runner, self._host, self._port)
             await site.start()
 
-            while self._running is True:
-                await asyncio.sleep(1)
+            while self._user_stopped is False:
+                await asyncio.sleep(0.1)
+
+            await self._server.shutdown()
+            self._running = False
         else:
             raise RuntimeError('Can not run healthcheck server twice')
 
-    def stop(self):
+    def stop_later(self):
         """
         Stop running the server
         """
-        self._running = False
+        self._user_stopped = False
+
