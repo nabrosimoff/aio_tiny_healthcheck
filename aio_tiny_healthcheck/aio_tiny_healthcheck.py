@@ -108,9 +108,12 @@ class AioTinyHealthcheck:
         for name, status in results.items():
             if type(status) is not bool:
                 raise TypeError(
-                    f'Healthcheck "{name}" returning value type'
-                    f' is "{type(status)}".'
-                    f'Required "bool".')
+                    'Healthcheck "%s" returning value type'
+                    ' is "{%s}".'
+                    'Required "bool".' % (
+                        name, type(status)
+                    )
+                )
         return True
 
     async def aiohttp_handler(self, request):

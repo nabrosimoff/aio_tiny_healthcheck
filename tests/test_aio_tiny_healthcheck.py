@@ -24,6 +24,13 @@ def sync_true():
 
 
 @pytest.fixture()
+def sync_none():
+    def f():
+        return None
+    return f
+
+
+@pytest.fixture()
 def sync_false():
     def f():
         return False
@@ -116,6 +123,16 @@ async def test_check_handler_empty():
 
 
 @pytest.mark.asyncio
+async def test_check_handler_none(sync_none):
+    aio_thc = AioTinyHealthcheck()
+
+    aio_thc.add_check('none', sync_none)
+
+    with pytest.raises(TypeError):
+        await aio_thc.check_handler()
+
+
+@pytest.mark.asyncio
 async def test_check_handler_sync_only(sync_true):
     aio_thc = AioTinyHealthcheck()
 
@@ -168,6 +185,7 @@ async def test_healthcheck_server(sync_false):
 
     task = asyncio.ensure_future(hc_server.run())
 
+    await asyncio.sleep(0.2)
     async with aiohttp.ClientSession() as session:
         async with session.get('http://localhost:8000/healthcheck/') as resp:
             assert resp.status == 500
