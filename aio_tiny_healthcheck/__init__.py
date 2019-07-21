@@ -9,3 +9,5 @@ __all__ = [
     'HealthcheckResponse',
     'HealthcheckServerHttp'
 ]
+
+name = 'aio_tiny_healthcheck'
