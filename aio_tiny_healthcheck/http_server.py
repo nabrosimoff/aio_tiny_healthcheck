@@ -1,26 +1,26 @@
 from aiohttp import web
 import asyncio
 
-from aio_tiny_healthcheck import AioTinyHealthcheck
+from aio_tiny_healthcheck import Checker
 
 
-__all__ = ['HealthcheckServerHttp']
+__all__ = ['HttpServer']
 
 
-class HealthcheckServerHttp:
+class HttpServer:
     """
     Async server for running healthcheck in case
     when you do not want to block execution flow by web-server
     """
     def __init__(
         self,
-        healthcheck_provider: AioTinyHealthcheck,
+        healthcheck_provider: Checker,
         host: str = '0.0.0.0',
         path: str = '/healthcheck',
         port: int = 8000
     ):
         """
-        :param healthcheck_provider: AioTinyHealthcheck instance
+        :param healthcheck_provider: Checker instance
         :param host: listened host
         :param path: URL path to healthcheck
         :param port: port

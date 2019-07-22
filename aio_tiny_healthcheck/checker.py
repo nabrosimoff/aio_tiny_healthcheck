@@ -3,7 +3,7 @@ from inspect import isfunction, iscoroutinefunction, ismethod
 import asyncio
 
 
-__all__ = ['AioTinyHealthcheck', 'HealthcheckResponse']
+__all__ = ['Checker', 'HealthcheckResponse']
 
 CheckResult = Dict[str, bool]
 
@@ -14,7 +14,7 @@ class HealthcheckResponse:
         self.code = code
 
 
-class AioTinyHealthcheck:
+class Checker:
     def __init__(self, success_code: int = 200, fail_code: int = 500):
         self.__sync_healthchecks = set()
         self.__async_healthchecks = set()
