@@ -5,6 +5,12 @@
 
 Tiny asynchronous implementation of healthcheck provider and server
 
+# Installation
+
+```
+pip install aio-tiny-healthcheck
+```
+
 # Usage
 By default, the Checker returns 200 if all checks successfully finish or 500 in opposite case.
 
@@ -58,7 +64,7 @@ if __name__ == "__main__":
 ```
 
 ## Using in concurrent mode
-You should want to run healthcheck in background if you already have some blocking operation in your wxwcution flow.
+You should want to run healthcheck in background if you already have some blocking operation in your execution flow.
 So, you can just use built-in server for this.
 
 ```python 
@@ -89,3 +95,11 @@ async def main():
 if __name__ == "__main__":
     asyncio.run(main())
 ```
+
+## Utility for health checking
+
+```
+python -m aio_tiny_healthcheck http://localhost:8000/healthcheck
+```
+
+Useful for running health check without external dependencies like curl.
