@@ -62,31 +62,30 @@ You should want to run healthcheck in background if you already have some blocki
 So, you can just use built-in server for this.
 
 ```python 
-from aio_tiny_healthcheck.checker import Checker
-from aio_tiny_healthcheck.http_server import HttpServer
 import asyncio
 
-
-async def some_long_task():
-    await asyncio.sleep(3600)
-
-
-def some_sync_check():
-    return True
+from aio_tiny_healthcheck.checker import Checker
+from aio_tiny_healthcheck.http_server import HttpServer
 
 
 async def some_async_check():
+    await asyncio.sleep(0.05)
     return True
 
 
-aio_thc = Checker()
-hc_server = HttpServer(
-    aio_thc,
-    path='/health',
-    host='localhost',
-    port=9090
-)
+async def main():
+    aio_thc = Checker()
+    hc_server = HttpServer(aio_thc, path="/health", host="localhost", port=9090)
 
-aio_thc.add_check('sync_check_true', some_async_check)
-aio_thc.add_check('async_check_false', some_async_check)
+    aio_thc.add_check("async_check_false", some_async_check)
+
+    asyncio.create_task(hc_server.run())
+
+    while True:
+        print("Hello health check!")
+        await asyncio.sleep(3)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
