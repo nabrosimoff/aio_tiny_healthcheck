@@ -1,6 +1,9 @@
-from typing import Union, Callable, Dict, Coroutine, Any
-from inspect import isfunction, iscoroutinefunction, ismethod
 import asyncio
+import functools
+import inspect
+
+from inspect import isfunction, ismethod
+from typing import Union, Callable, Dict, Coroutine, Any
 
 
 __all__ = ['Checker', 'HealthcheckResponse']
@@ -24,9 +27,9 @@ class Checker:
     def add_check(
             self,
             name: str,
-            check: Union[Callable[..., bool], Callable[..., Coroutine[Any,Any,bool]]]
+            check: Union[Callable[..., bool], Callable[..., Coroutine[Any, Any, bool]]]
     ):
-        if iscoroutinefunction(check) is True:
+        if iscoroutinefunction_or_partial(check) is True:
             if name not in self.checks:
                 self.__async_healthchecks.add((name, check))
             else:
@@ -123,4 +126,9 @@ class Checker:
         return web.json_response(response.body, status=response.code)
 
 
-
+def iscoroutinefunction_or_partial(obj):
+    """This function check if object is coroutine
+    or coroutine with partial wrapper"""
+    if isinstance(obj, functools.partial):
+        obj = obj.func
+    return inspect.iscoroutinefunction(obj)
