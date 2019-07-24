@@ -7,7 +7,7 @@ Tiny asynchronous implementation of healthcheck provider and server
 
 # Installation
 
-```
+```bash
 pip install aio-tiny-healthcheck
 ```
 
@@ -68,38 +68,58 @@ You should want to run healthcheck in background if you already have some blocki
 So, you can just use built-in server for this.
 
 ```python 
-import asyncio
-
 from aio_tiny_healthcheck.checker import Checker
 from aio_tiny_healthcheck.http_server import HttpServer
+import asyncio
 
 
-async def some_async_check():
-    await asyncio.sleep(0.05)
+async def some_long_task():
+    await asyncio.sleep(3600)
+
+
+def some_sync_check():
     return True
 
 
+async def some_async_check():
+    return True
+
+
+aio_thc = Checker()
+hc_server = HttpServer(
+    aio_thc,
+    path='/health',
+    host='localhost',
+    port=9090
+)
+
+aio_thc.add_check('sync_check_true', some_async_check)
+aio_thc.add_check('async_check_false', some_async_check)
+
+
 async def main():
-    aio_thc = Checker()
-    hc_server = HttpServer(aio_thc, path="/health", host="localhost", port=9090)
-
-    aio_thc.add_check("async_check_false", some_async_check)
-
+    # Run healthcheck concurrently
     asyncio.create_task(hc_server.run())
 
-    while True:
-        print("Hello health check!")
-        await asyncio.sleep(3)
+    # Run long task
+    await some_long_task()
 
 
-if __name__ == "__main__":
-    asyncio.run(main())
+if __name__ == '__main__':
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
+
 ```
 
 ## Utility for health checking
 
 ```
-python -m aio_tiny_healthcheck http://localhost:8000/healthcheck
+python -m aio_tiny_healthcheck http://localhost:9192/healthcheck
 ```
 
 Useful for running health check without external dependencies like curl.
+
+By default, concurrent server and health checking utility are working
+with a port and query path `http://localhost:8000/healthcheck`.
+So, if you run concurrent server with no using arguments, you can also run the utility
+with without arguments `python -m aio_tiny_healthcheck`.
