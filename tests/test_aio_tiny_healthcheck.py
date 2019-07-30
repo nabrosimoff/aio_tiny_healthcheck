@@ -57,6 +57,19 @@ def async_false():
 
 
 @pytest.fixture()
+def sync_exception_check():
+    def f():
+        return 1/0
+    return f
+
+@pytest.fixture()
+def async_exception_check():
+    async def f():
+        return 1/0
+    return f
+
+
+@pytest.fixture()
 def async_partial(async_true):
     return partial(async_true)
 
@@ -163,6 +176,25 @@ async def test_check_handler_sync_only(sync_true):
     assert result.code == 200
     assert result.body['sync_true'] is True
 
+
+@pytest.mark.asyncio
+async def test_check_sync_exception_throw(sync_exception_check):
+    aio_thc = Checker()
+
+    aio_thc.add_check('sync_exception', sync_exception_check)
+
+    with pytest.raises(ZeroDivisionError):
+        await aio_thc.check_handler()
+
+
+@pytest.mark.asyncio
+async def test_check_async_exception_throw(async_exception_check):
+    aio_thc = Checker()
+
+    aio_thc.add_check('async_exception', async_exception_check)
+
+    with pytest.raises(ZeroDivisionError):
+        await aio_thc.check_handler()
 
 @pytest.mark.asyncio
 async def test_check_handler_error(

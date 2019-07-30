@@ -63,7 +63,7 @@ class Checker:
         if len(self.sync_checks) == 0 and len(self.async_checks) == 0:
             return HealthcheckResponse({}, self.__success_code)
 
-        sync_checks_results = self.__run_sync_checks()
+        sync_checks_results = await self.__run_sync_checks()
         async_checks_results = await self.__run_async_checks()
 
         checks_results = {**sync_checks_results, **async_checks_results}
@@ -99,12 +99,15 @@ class Checker:
 
         return async_check_results
 
-    def __run_sync_checks(self) -> CheckResult:
-        sync_checks_results = {
-            name: check() for (name, check) in self.__sync_healthchecks
-        }
+    async def __run_sync_checks(self) -> CheckResult:
+        loop = asyncio.get_event_loop()
+        check_result = {}
 
-        return sync_checks_results
+        for (name, check) in self.__sync_healthchecks:
+            result = await loop.run_in_executor(None, check)
+            check_result[name] = result
+
+        return check_result
 
     @staticmethod
     def __check_result_types(results: CheckResult):
