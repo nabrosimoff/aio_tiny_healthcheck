@@ -142,9 +142,15 @@ class Checker:
         return web.json_response(response.body, status=response.code)
 
 
-def iscoroutinefunction_or_partial(obj):
-    """This function check if object is coroutine
-    or coroutine with partial wrapper"""
+def iscoroutinefunction_or_partial(obj: Any):
+    """
+    This function check if object is coroutine
+    or coroutine with partial wrapper.
+
+    :param obj: Checked object
+    :return: True if checked object is coroutine or coroutine
+    with partial wrapper. False in all other cases.
+    """
     if isinstance(obj, functools.partial):
         obj = obj.func
     return inspect.iscoroutinefunction(obj)
