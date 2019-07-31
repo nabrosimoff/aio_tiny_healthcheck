@@ -18,11 +18,24 @@ class HealthcheckResponse:
 
 
 class Checker:
-    def __init__(self, success_code: int = 200, fail_code: int = 500):
+    def __init__(
+            self,
+            success_code: int = 200,
+            fail_code: int = 500,
+            timeout: int = 10
+    ):
+        """
+        :param success_code: value of code if all checks finishes successful
+        :param fail_code: value of code if at least
+        one check finishes unsuccessful
+        :param timeout: timeout of execution all of checks
+        """
+
         self.__sync_healthchecks = set()
         self.__async_healthchecks = set()
         self.__success_code = success_code
         self.__fail_code = fail_code
+        self.__timeout = timeout
 
     def add_check(
             self,
