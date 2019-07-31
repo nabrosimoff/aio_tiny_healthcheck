@@ -3,7 +3,7 @@ import functools
 import inspect
 
 from inspect import isfunction, ismethod
-from typing import Union, Callable, Dict, Coroutine, Any
+from typing import Union, Callable, Dict, Coroutine, Any, Awaitable, Iterable
 
 
 __all__ = ['Checker', 'HealthcheckResponse']
@@ -76,10 +76,11 @@ class Checker:
         if len(self.sync_checks) == 0 and len(self.async_checks) == 0:
             return HealthcheckResponse({}, self.__success_code)
 
-        sync_checks_results = await self.__run_sync_checks()
-        async_checks_results = await self.__run_async_checks()
+        ex_sync_tasks = self.__prepare_sync_checks()
+        async_tasks = self.__prepare_async_checks()
+        all_tasks = set((*ex_sync_tasks, *async_tasks))
 
-        checks_results = {**sync_checks_results, **async_checks_results}
+        checks_results = await self.__run_check_tasks(all_tasks)
 
         self.__check_result_types(checks_results)
 
@@ -90,37 +91,48 @@ class Checker:
 
         return HealthcheckResponse(checks_results, code)
 
-    async def __run_async_checks(self) -> CheckResult:
+    @staticmethod
+    async def __check_wrapper(name: str, task: Awaitable):
+        result = await task
+        return name, result
 
+    def __prepare_async_checks(self)->Iterable[Awaitable]:
         if len(self.async_checks) == 0:
-            return {}
+            return set()
 
-        async def wrapper(name: str, task: Callable):
-            result = await task()
-            return name, result
-
-        async_check_tasks = {
-            wrapper(name, check) for (name, check) in self.__async_healthchecks
+        prepared_tasks = {
+            self.__check_wrapper(name, check())\
+                for (name, check) in self.__async_healthchecks
         }
 
-        done_checks, _ = await asyncio.wait(
-            async_check_tasks,
+        return prepared_tasks
+
+    def __prepare_sync_checks(self)->Iterable[Awaitable]:
+        if len(self.sync_checks) == 0:
+            return set()
+
+        loop = asyncio.get_event_loop()
+        prepared_tasks = set()
+
+        for (name, check) in self.__sync_healthchecks:
+            promise = loop.run_in_executor(None, check)
+            check_task = self.__check_wrapper(name, promise)
+            prepared_tasks.add(check_task)
+
+        return prepared_tasks
+
+    async def __run_check_tasks(
+            self,
+            checks_tasks: Iterable[Awaitable]
+    )->CheckResult:
+        done, _ = await asyncio.wait(
+            checks_tasks,
+            timeout=self.__timeout,
             return_when=asyncio.ALL_COMPLETED
         )
 
-        async_check_results = {t.result()[0]: t.result()[1] for t in done_checks}
-
-        return async_check_results
-
-    async def __run_sync_checks(self) -> CheckResult:
-        loop = asyncio.get_event_loop()
-        check_result = {}
-
-        for (name, check) in self.__sync_healthchecks:
-            result = await loop.run_in_executor(None, check)
-            check_result[name] = result
-
-        return check_result
+        result = {t.result()[0]: t.result()[1] for t in done}
+        return result
 
     @staticmethod
     def __check_result_types(results: CheckResult):
@@ -135,7 +147,7 @@ class Checker:
                 )
         return True
 
-    async def aiohttp_handler(self, request):
+    async def aiohttp_handler(self, _):
         from aiohttp import web
         response = await self.check_handler()
 
