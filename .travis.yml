@@ -1,4 +1,8 @@
 language: python
+
+env:
+  CODECOV_TOKEN="5488531b-d4a6-46d6-ad23-2de402c0fdcd"
+
 matrix:
   include:
     - python: 3.5

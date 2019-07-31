@@ -11,4 +11,4 @@ __all__ = [
 ]
 
 name = 'aio_tiny_healthcheck'
-__version__ = '1.1.1'
+__version__ = '1.1.2'
