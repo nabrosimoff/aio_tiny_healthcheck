@@ -11,14 +11,17 @@ from aio_tiny_healthcheck.http_server import HttpServer
 
 @pytest.fixture()
 def check_class_object():
-    class t:
+    class T:
+        def __init__(self):
+            self.value = True
+
         async def async_method_true(self):
-            return True
+            return self.value
 
         def sync_method_true(self):
-            return True
+            return self.value
 
-    return t()
+    return T()
 
 
 @pytest.fixture()
@@ -33,7 +36,6 @@ def sync_slow_true():
 @pytest.fixture()
 def async_slow_true():
     async def f():
-        import asyncio
         await asyncio.sleep(5)
         return True
     return f
@@ -247,29 +249,6 @@ async def test_check_handler_success_aiohttp(async_true):
 
 
 @pytest.mark.asyncio
-async def test_healthcheck_server(sync_false):
-    aio_thc = Checker()
-
-    aio_thc.add_check('sync_false', sync_false)
-
-    hc_server = HttpServer(aio_thc, host='localhost')
-
-    task = asyncio.ensure_future(hc_server.run())
-
-    await asyncio.sleep(0.2)
-    async with aiohttp.ClientSession() as session:
-        async with session.get('http://localhost:8000/healthcheck/') as resp:
-            assert resp.status == 500
-            resp_body = await resp.text()
-            print(resp_body)
-            assert json.loads(resp_body)['sync_false'] is False
-
-    hc_server.stop_later()
-    await asyncio.sleep(1)
-    task.cancel()
-
-
-@pytest.mark.asyncio
 async def test_slow_handler_slow_sync(sync_true, async_true, sync_slow_true):
     aio_thc = Checker(timeout=1)
 
@@ -278,6 +257,7 @@ async def test_slow_handler_slow_sync(sync_true, async_true, sync_slow_true):
     aio_thc.add_check('sync_slow_true', sync_slow_true)
 
     result = await aio_thc.check_handler()
+
     assert result.code == 500
     assert result.body['sync_true'] == True
     assert result.body['async_true'] == True
@@ -297,3 +277,25 @@ async def test_slow_handler_slow_async(sync_true, async_true, async_slow_true):
     assert result.body['sync_true'] == True
     assert result.body['async_true'] == True
     assert result.body['async_slow_true'] == False
+
+
+@pytest.mark.asyncio
+async def test_healthcheck_server(sync_false):
+    aio_thc = Checker()
+
+    aio_thc.add_check('sync_false', sync_false)
+
+    hc_server = HttpServer(aio_thc, host='localhost')
+
+    task = asyncio.ensure_future(hc_server.run())
+
+    await asyncio.sleep(0.2)
+    async with aiohttp.ClientSession() as session:
+        async with session.get('http://localhost:8000/healthcheck/') as resp:
+            assert resp.status == 500
+            resp_body = await resp.text()
+            assert json.loads(resp_body)['sync_false'] is False
+
+    hc_server.stop_later()
+    await asyncio.sleep(1)
+    task.cancel()

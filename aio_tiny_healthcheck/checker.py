@@ -142,7 +142,9 @@ class Checker:
 
         result = {t.result()[0]: t.result()[1] for t in done}
         if len(pending) > 0:
-            map(lambda t:t.cancel(), pending)
+            for t in pending:
+                t.cancel()
+
             timed_out_checks = self.__get_unexisted_checks(result.keys())
             for check in timed_out_checks:
                 result[check] = False
