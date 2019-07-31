@@ -3,7 +3,16 @@ import functools
 import inspect
 
 from inspect import isfunction, ismethod
-from typing import Union, Callable, Dict, Coroutine, Any, Awaitable, Iterable
+from typing import (
+    Union,
+    Callable,
+    Dict,
+    Coroutine,
+    Any,
+    Awaitable,
+    Iterable,
+    Set
+)
 
 
 __all__ = ['Checker', 'HealthcheckResponse']
@@ -125,14 +134,29 @@ class Checker:
             self,
             checks_tasks: Iterable[Awaitable]
     )->CheckResult:
-        done, _ = await asyncio.wait(
+        done, pending = await asyncio.wait(
             checks_tasks,
             timeout=self.__timeout,
             return_when=asyncio.ALL_COMPLETED
         )
 
         result = {t.result()[0]: t.result()[1] for t in done}
+        if len(pending) > 0:
+            map(lambda t:t.cancel(), pending)
+            timed_out_checks = self.__get_unexisted_checks(result.keys())
+            for check in timed_out_checks:
+                result[check] = False
+
         return result
+
+    def __get_unexisted_checks(self, check_names: Iterable[str])->Iterable[str]:
+        all_checks = set((*self.sync_checks,*self.async_checks))
+
+        res = set()
+        for name in all_checks:
+            if name not in check_names:
+                res.add(name)
+        return res
 
     @staticmethod
     def __check_result_types(results: CheckResult):
