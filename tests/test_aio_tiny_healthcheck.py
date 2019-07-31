@@ -22,6 +22,24 @@ def check_class_object():
 
 
 @pytest.fixture()
+def sync_slow_true():
+    def f():
+        import time
+        time.sleep(5)
+        return True
+    return f
+
+
+@pytest.fixture()
+def async_slow_true():
+    async def f():
+        import asyncio
+        await asyncio.sleep(5)
+        return True
+    return f
+
+
+@pytest.fixture()
 def sync_true():
     def f():
         return True
@@ -249,3 +267,33 @@ async def test_healthcheck_server(sync_false):
     hc_server.stop_later()
     await asyncio.sleep(1)
     task.cancel()
+
+
+@pytest.mark.asyncio
+async def test_slow_handler_slow_sync(sync_true, async_true, sync_slow_true):
+    aio_thc = Checker(timeout=1)
+
+    aio_thc.add_check('sync_true', sync_true)
+    aio_thc.add_check('async_true', async_true)
+    aio_thc.add_check('sync_slow_true', sync_slow_true)
+
+    result = await aio_thc.check_handler()
+    assert result.code == 500
+    assert result.body['sync_true'] == True
+    assert result.body['async_true'] == True
+    assert result.body['sync_slow_true'] == False
+
+
+@pytest.mark.asyncio
+async def test_slow_handler_slow_async(sync_true, async_true, async_slow_true):
+    aio_thc = Checker(timeout=1)
+
+    aio_thc.add_check('sync_true', sync_true)
+    aio_thc.add_check('async_true', async_true)
+    aio_thc.add_check('async_slow_true', async_slow_true)
+
+    result = await aio_thc.check_handler()
+    assert result.code == 500
+    assert result.body['sync_true'] == True
+    assert result.body['async_true'] == True
+    assert result.body['async_slow_true'] == False
