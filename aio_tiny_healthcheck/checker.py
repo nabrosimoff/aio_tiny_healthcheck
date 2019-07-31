@@ -1,9 +1,12 @@
-from typing import Union, Callable, Dict, Coroutine, Any
-from inspect import isfunction, iscoroutinefunction, ismethod
 import asyncio
+import functools
+import inspect
+
+from inspect import isfunction, ismethod
+from typing import Union, Callable, Dict, Coroutine, Any
 
 
-__all__ = ['AioTinyHealthcheck', 'HealthcheckResponse']
+__all__ = ['Checker', 'HealthcheckResponse']
 
 CheckResult = Dict[str, bool]
 
@@ -14,7 +17,7 @@ class HealthcheckResponse:
         self.code = code
 
 
-class AioTinyHealthcheck:
+class Checker:
     def __init__(self, success_code: int = 200, fail_code: int = 500):
         self.__sync_healthchecks = set()
         self.__async_healthchecks = set()
@@ -24,9 +27,9 @@ class AioTinyHealthcheck:
     def add_check(
             self,
             name: str,
-            check: Union[Callable[..., bool], Callable[..., Coroutine[Any,Any,bool]]]
+            check: Union[Callable[..., bool], Callable[..., Coroutine[Any, Any, bool]]]
     ):
-        if iscoroutinefunction(check) is True:
+        if iscoroutinefunction_or_partial(check) is True:
             if name not in self.checks:
                 self.__async_healthchecks.add((name, check))
             else:
@@ -60,7 +63,7 @@ class AioTinyHealthcheck:
         if len(self.sync_checks) == 0 and len(self.async_checks) == 0:
             return HealthcheckResponse({}, self.__success_code)
 
-        sync_checks_results = self.__run_sync_checks()
+        sync_checks_results = await self.__run_sync_checks()
         async_checks_results = await self.__run_async_checks()
 
         checks_results = {**sync_checks_results, **async_checks_results}
@@ -96,12 +99,15 @@ class AioTinyHealthcheck:
 
         return async_check_results
 
-    def __run_sync_checks(self) -> CheckResult:
-        sync_checks_results = {
-            name: check() for (name, check) in self.__sync_healthchecks
-        }
+    async def __run_sync_checks(self) -> CheckResult:
+        loop = asyncio.get_event_loop()
+        check_result = {}
 
-        return sync_checks_results
+        for (name, check) in self.__sync_healthchecks:
+            result = await loop.run_in_executor(None, check)
+            check_result[name] = result
+
+        return check_result
 
     @staticmethod
     def __check_result_types(results: CheckResult):
@@ -123,4 +129,9 @@ class AioTinyHealthcheck:
         return web.json_response(response.body, status=response.code)
 
 
-
+def iscoroutinefunction_or_partial(obj):
+    """This function check if object is coroutine
+    or coroutine with partial wrapper"""
+    if isinstance(obj, functools.partial):
+        obj = obj.func
+    return inspect.iscoroutinefunction(obj)

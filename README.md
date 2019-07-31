@@ -1,14 +1,24 @@
 # aio_tiny_healthcheck
+[![PyPI](https://img.shields.io/pypi/v/aio_tiny_healthcheck.svg)](https://github.com/nabrosimoff/aio_tiny_healthcheck)
+[![Build Status](https://travis-ci.org/nabrosimoff/aio_tiny_healthcheck.svg?branch=master)](https://travis-ci.org/nabrosimoff/aio_tiny_healthcheck)
+[![Build Status](https://travis-ci.org/nabrosimoff/aio_tiny_healthcheck.svg?branch=develop)](https://travis-ci.org/nabrosimoff/aio_tiny_healthcheck)
+
 Tiny asynchronous implementation of healthcheck provider and server
 
+# Installation
+
+```bash
+pip install aio-tiny-healthcheck
+```
+
 # Usage
-By default, the AioTinyHealthcheck returns 200 if all checks successfully finish or 500 in opposite case.
+By default, the Checker returns 200 if all checks successfully finish or 500 in opposite case.
 
 ## Using with aiohttp
 ```python
 from aiohttp import web
 
-from aio_tiny_healthcheck.aio_tiny_healthcheck import AioTinyHealthcheck
+from aio_tiny_healthcheck.checker import Checker
 
 def some_sync_check():
     return True
@@ -16,7 +26,7 @@ def some_sync_check():
 async def some_async_check():
     return False
 
-healthcheck_provider = AioTinyHealthcheck()
+healthcheck_provider = Checker()
 healthcheck_provider.add_check('sync_check_true', some_async_check)
 healthcheck_provider.add_check('async_check_false', some_async_check)
 
@@ -30,7 +40,7 @@ web.run_app(app)
 ```python
 from sanic import Sanic
 from sanic.response import json
-from aio_tiny_healthcheck.aio_tiny_healthcheck import AioTinyHealthcheck
+from aio_tiny_healthcheck.checker import Checker
 
 app = Sanic()
 
@@ -40,7 +50,7 @@ def some_sync_check():
 async def some_async_check():
     return False
 
-healthcheck_provider = AioTinyHealthcheck(success_code=201, fail_code=400)
+healthcheck_provider = Checker(success_code=201, fail_code=400)
 healthcheck_provider.add_check('sync_check_true', some_async_check)
 healthcheck_provider.add_check('async_check_false', some_async_check)
 
@@ -54,11 +64,12 @@ if __name__ == "__main__":
 ```
 
 ## Using in concurrent mode
-You should want to run healthcheck in background if you already have some blocking operation in your wxwcution flow.
+You should want to run healthcheck in background if you already have some blocking operation in your execution flow.
 So, you can just use built-in server for this.
+
 ```python 
-from aio_tiny_healthcheck.aio_tiny_healthcheck import AioTinyHealthcheck
-from aio_tiny_healthcheck.healthcheck_server_http import HealthcheckServerHttp
+from aio_tiny_healthcheck.checker import Checker
+from aio_tiny_healthcheck.http_server import HttpServer
 import asyncio
 
 
@@ -74,8 +85,8 @@ async def some_async_check():
     return True
 
 
-aio_thc = AioTinyHealthcheck()
-hc_server = HealthcheckServerHttp(
+aio_thc = Checker()
+hc_server = HttpServer(
     aio_thc,
     path='/health',
     host='localhost',
@@ -87,11 +98,28 @@ aio_thc.add_check('async_check_false', some_async_check)
 
 
 async def main():
+    # Run healthcheck concurrently
     asyncio.create_task(hc_server.run())
+
+    # Run long task
     await some_long_task()
 
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main())
+
 ```
+
+## Utility for health checking
+
+```
+python -m aio_tiny_healthcheck http://localhost:9192/healthcheck
+```
+
+Useful for running health check without external dependencies like curl.
+
+By default, concurrent server and health checking utility are working
+with a port and query path `http://localhost:8000/healthcheck`.
+So, if you run concurrent server with no using arguments, you can also run the utility
+with without arguments `python -m aio_tiny_healthcheck`.

@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="aio_tiny_healthcheck",
-    version="0.1.3",
+    version="1.1.1",
     author="Nikolai Abrosimov",
     author_email="nikolay.abrosimoff@gmail.com",
     description="Tiny asynchronous implementation of healthcheck provider and http-server",
@@ -14,7 +14,9 @@ setuptools.setup(
     url="https://github.com/nabrosimoff/aio_tiny_healthcheck",
     packages=setuptools.find_packages(),
     classifiers=[
-        "Programming Language :: Python :: 3",
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
         "License :: OSI Approved :: Apache Software License",
         "Operating System :: OS Independent",
     ],

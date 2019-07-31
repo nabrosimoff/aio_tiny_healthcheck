@@ -1,14 +1,14 @@
 """Package provides async healthcheck
 interface and http-server able to run concurrently"""
 
-from .aio_tiny_healthcheck import AioTinyHealthcheck, HealthcheckResponse
-from .healthcheck_server_http import HealthcheckServerHttp
+from .checker import Checker, HealthcheckResponse
+from .http_server import HttpServer
 
 __all__ = [
-    'AioTinyHealthcheck',
+    'Checker',
     'HealthcheckResponse',
-    'HealthcheckServerHttp'
+    'HttpServer'
 ]
 
 name = 'aio_tiny_healthcheck'
-__version__ = '0.1.3'
+__version__ = '1.1.1'

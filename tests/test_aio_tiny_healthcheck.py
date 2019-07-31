@@ -1,9 +1,13 @@
-import pytest
-from aio_tiny_healthcheck.aio_tiny_healthcheck import AioTinyHealthcheck
-from aio_tiny_healthcheck.healthcheck_server_http import HealthcheckServerHttp
-import json
 import asyncio
+import json
+from functools import partial
+
 import aiohttp
+import pytest
+
+from aio_tiny_healthcheck.checker import Checker
+from aio_tiny_healthcheck.http_server import HttpServer
+
 
 @pytest.fixture()
 def check_class_object():
@@ -15,6 +19,7 @@ def check_class_object():
             return True
 
     return t()
+
 
 @pytest.fixture()
 def sync_true():
@@ -51,8 +56,26 @@ def async_false():
     return f
 
 
+@pytest.fixture()
+def sync_exception_check():
+    def f():
+        return 1/0
+    return f
+
+@pytest.fixture()
+def async_exception_check():
+    async def f():
+        return 1/0
+    return f
+
+
+@pytest.fixture()
+def async_partial(async_true):
+    return partial(async_true)
+
+
 def test_add_check_sync(sync_true):
-    aio_thc = AioTinyHealthcheck()
+    aio_thc = Checker()
 
     aio_thc.add_check('sync', sync_true)
 
@@ -61,7 +84,7 @@ def test_add_check_sync(sync_true):
 
 
 def test_add_check_async(async_true):
-    aio_thc = AioTinyHealthcheck()
+    aio_thc = Checker()
 
     aio_thc.add_check('async', async_true)
 
@@ -70,23 +93,24 @@ def test_add_check_async(async_true):
 
 
 def test_add_check_noncallable():
-    aio_thc = AioTinyHealthcheck()
+    aio_thc = Checker()
 
     with pytest.raises(TypeError):
         aio_thc.add_check('test', 'var')
 
+
 def test_add_nonuniq_check_sync():
 
-    aio_thc = AioTinyHealthcheck()
+    aio_thc = Checker()
 
-    aio_thc.add_check('sync', lambda:True)
+    aio_thc.add_check('sync', lambda: True)
 
     with pytest.raises(ValueError):
-        aio_thc.add_check('sync', lambda:True)
+        aio_thc.add_check('sync', lambda: True)
 
 
 def test_add_nonuniq_check_async():
-    aio_thc = AioTinyHealthcheck()
+    aio_thc = Checker()
 
     aio_thc.add_check('async', lambda: True)
 
@@ -95,7 +119,7 @@ def test_add_nonuniq_check_async():
 
 
 def test_add_sync_method(check_class_object):
-    aio_thc = AioTinyHealthcheck()
+    aio_thc = Checker()
 
     aio_thc.add_check('sync', check_class_object.sync_method_true)
 
@@ -104,7 +128,7 @@ def test_add_sync_method(check_class_object):
 
 
 def test_add_async_method(check_class_object):
-    aio_thc = AioTinyHealthcheck()
+    aio_thc = Checker()
 
     aio_thc.add_check('async', check_class_object.async_method_true)
 
@@ -114,7 +138,7 @@ def test_add_async_method(check_class_object):
 
 @pytest.mark.asyncio
 async def test_check_handler_empty():
-    aio_thc = AioTinyHealthcheck()
+    aio_thc = Checker()
 
     result = await aio_thc.check_handler()
 
@@ -124,7 +148,7 @@ async def test_check_handler_empty():
 
 @pytest.mark.asyncio
 async def test_check_handler_none(sync_none):
-    aio_thc = AioTinyHealthcheck()
+    aio_thc = Checker()
 
     aio_thc.add_check('none', sync_none)
 
@@ -133,21 +157,50 @@ async def test_check_handler_none(sync_none):
 
 
 @pytest.mark.asyncio
+async def test_check_handler_partial(async_partial):
+    aio_thc = Checker()
+
+    aio_thc.add_check('async_partial', async_partial)
+
+    await aio_thc.check_handler()
+    assert len(aio_thc.async_checks) == 1
+
+
+@pytest.mark.asyncio
 async def test_check_handler_sync_only(sync_true):
-    aio_thc = AioTinyHealthcheck()
+    aio_thc = Checker()
 
     aio_thc.add_check('sync_true', sync_true)
     result = await aio_thc.check_handler()
 
     assert result.code == 200
-    assert result.body['sync_true'] == True
+    assert result.body['sync_true'] is True
 
+
+@pytest.mark.asyncio
+async def test_check_sync_exception_throw(sync_exception_check):
+    aio_thc = Checker()
+
+    aio_thc.add_check('sync_exception', sync_exception_check)
+
+    with pytest.raises(ZeroDivisionError):
+        await aio_thc.check_handler()
+
+
+@pytest.mark.asyncio
+async def test_check_async_exception_throw(async_exception_check):
+    aio_thc = Checker()
+
+    aio_thc.add_check('async_exception', async_exception_check)
+
+    with pytest.raises(ZeroDivisionError):
+        await aio_thc.check_handler()
 
 @pytest.mark.asyncio
 async def test_check_handler_error(
         sync_true, sync_false, async_true, async_false
 ):
-    aio_thc = AioTinyHealthcheck(fail_code=777)
+    aio_thc = Checker(fail_code=777)
 
     aio_thc.add_check('sync_true', sync_true)
     aio_thc.add_check('sync_false', sync_false)
@@ -165,23 +218,23 @@ async def test_check_handler_error(
 
 @pytest.mark.asyncio
 async def test_check_handler_success_aiohttp(async_true):
-    aio_thc = AioTinyHealthcheck(success_code=201)
+    aio_thc = Checker(success_code=201)
 
     aio_thc.add_check('async_true', async_true)
 
     response = await aio_thc.aiohttp_handler(None)
 
     assert response.status == 201
-    assert json.loads(response.body.decode())['async_true'] == True
+    assert json.loads(response.body.decode())['async_true'] is True
 
 
 @pytest.mark.asyncio
 async def test_healthcheck_server(sync_false):
-    aio_thc = AioTinyHealthcheck()
+    aio_thc = Checker()
 
     aio_thc.add_check('sync_false', sync_false)
 
-    hc_server = HealthcheckServerHttp(aio_thc, host='localhost')
+    hc_server = HttpServer(aio_thc, host='localhost')
 
     task = asyncio.ensure_future(hc_server.run())
 
@@ -191,10 +244,8 @@ async def test_healthcheck_server(sync_false):
             assert resp.status == 500
             resp_body = await resp.text()
             print(resp_body)
-            assert json.loads(resp_body)['sync_false'] == False
-
+            assert json.loads(resp_body)['sync_false'] is False
 
     hc_server.stop_later()
     await asyncio.sleep(1)
     task.cancel()
-
