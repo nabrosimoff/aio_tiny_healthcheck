@@ -133,9 +133,16 @@ class Checker:
     async def __run_check_tasks(
             self,
             checks_tasks: Iterable[Awaitable]
-    )->CheckResult:
+    ) -> CheckResult:
+        tasks = []
+        for coro_or_task in checks_tasks:
+            if asyncio.iscoroutine(coro_or_task):
+                tasks.append(asyncio.create_task(coro_or_task))
+            else:
+                tasks.append(coro_or_task)
+
         done, pending = await asyncio.wait(
-            checks_tasks,
+            tasks,
             timeout=self.__timeout,
             return_when=asyncio.ALL_COMPLETED
         )
